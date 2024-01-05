@@ -8,28 +8,6 @@
 #include "sdkconfig.h"
 #include "main.h"
 
-#define HIGH 1
-#define LOW 0
-#define OUTPUT GPIO_MODE_OUTPUT
-#define INPUT GPIO_MODE_INPUT
-
-#define PIN_RED     23 // GPIO23
-#define PIN_GREEN   22 // GPIO22
-#define PIN_BLUE    21 // GPIO21
-
-void setup() {
-    gpio_set_direction(PIN_RED,    OUTPUT);
-    gpio_set_direction(PIN_GREEN,  OUTPUT);
-    gpio_set_direction(PIN_BLUE,   OUTPUT);
-
-}
-
-void setColor(int R, int G, int B) {
-    gpio_set_level(PIN_RED,   R);
-    gpio_set_level(PIN_GREEN, G);
-    gpio_set_level(PIN_BLUE,  B);
-}
-
 void app_main(void) {
     printf("Hello world!\n\n");
 
