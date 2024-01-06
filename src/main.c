@@ -1,17 +1,22 @@
 #include <inttypes.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "driver/gpio.h"
 #include "esp_log.h"
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "sdkconfig.h"
-#include "main.h"
+#include "rgb_led.h"
 
 void app_main(void) {
     printf("Hello world!\n\n");
-
-    setColor(0, 201, 204);
+    
+    rgb_color_def_t currentColor;
+    currentColor.red = 0;
+    currentColor.green = 201;
+    currentColor.blue = 204;
+    
+    rgb_led_set_color(&currentColor);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     /* Print chip information */
     esp_chip_info_t chip_info;
@@ -41,12 +46,24 @@ void app_main(void) {
 
     printf("Minimum free heap size: %" PRIu32 " bytes\n", esp_get_minimum_free_heap_size());
 
-    setColor(247, 120, 138);
+    currentColor.red = 247;
+    currentColor.green = 120;
+    currentColor.blue = 138;
+    
+    rgb_led_set_color(&currentColor);
+    
     for (int i = 10; i >= 0; i--) {
         printf("Restarting in %d seconds...\n", i);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
-    setColor(52, 168, 83);
+
+    currentColor.red = 52;
+    currentColor.green = 168;
+    currentColor.blue = 83;
+    
+    rgb_led_set_color(&currentColor);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    
     printf("Restarting now.\n");
     fflush(stdout);
     esp_restart();
