@@ -7,15 +7,14 @@
 #include "sdkconfig.h"
 #include "rgb_led.h"
 
+rgb_color_def_t color_cyan = {0,201,204};
+rgb_color_def_t color_salmon = {247,120,138};
+rgb_color_def_t color_melon = {52,168,83};
+
 void app_main(void) {
     printf("Hello world!\n\n");
     
-    rgb_color_def_t currentColor;
-    currentColor.red = 0;
-    currentColor.green = 201;
-    currentColor.blue = 204;
-    
-    rgb_led_set_color(&currentColor);
+    rgb_led_set_color(&color_cyan);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     /* Print chip information */
@@ -45,25 +44,23 @@ void app_main(void) {
            (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
 
     printf("Minimum free heap size: %" PRIu32 " bytes\n", esp_get_minimum_free_heap_size());
-
-    currentColor.red = 247;
-    currentColor.green = 120;
-    currentColor.blue = 138;
     
-    rgb_led_set_color(&currentColor);
+    printf("Setting Color to Salmon\n");
+    rgb_led_set_color(&color_salmon);
+    printf("Starting Blink\n");
+    rgb_led_set_blink(true);
     
     for (int i = 10; i >= 0; i--) {
         printf("Restarting in %d seconds...\n", i);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
-
-    currentColor.red = 52;
-    currentColor.green = 168;
-    currentColor.blue = 83;
     
-    rgb_led_set_color(&currentColor);
+    printf("Stopping Blink\n");
+    rgb_led_set_blink(false);
+    printf("Setting color to Melon\n");
+    rgb_led_set_color(&color_melon);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
-    
+
     printf("Restarting now.\n");
     fflush(stdout);
     esp_restart();

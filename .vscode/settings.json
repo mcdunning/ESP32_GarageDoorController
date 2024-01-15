@@ -3,6 +3,7 @@
     "files.associations": {
         "gpio.h": "c",
         "esp_log.h": "c",
-        "task.h": "c"
+        "task.h": "c",
+        "rgb_led.h": "c"
     }
 }
