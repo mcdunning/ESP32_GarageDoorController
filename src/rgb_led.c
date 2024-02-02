@@ -11,18 +11,23 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#include "esp_log.h"
 #include "driver/ledc.h"
 
 #include "rgb_led.h"
 
-ledc_channel_config_t ledc_channel[LEDC_TEST_CH_NUM];
+static const char* TAG = "rgb_led";
+
+ledc_channel_config_t ledc_channel[LEDC_CH_NUM];
 SemaphoreHandle_t counting_sem;
 
-// handle for rgb_led_pwm_init
-bool g_pwm_init_handle = false;
+static TaskHandle_t fade_handle;            // handle for the fade task
+static int current_color[LEDC_CH_NUM];      // refernce to the current selected colodr for the fade
+static  bool g_pwm_init_handle = false;     // handle for rgb_led_pwm_init
 
 /**
  * This callack function will be called when the fade opertaion has ended
+ * 
  * Use callback only if you are are aware it is being called inside an ISR
  * Otherwise, use a semaphore to unblock tasks
  **/
@@ -39,18 +44,50 @@ static IRAM_ATTR bool cb_ledc_fade_end_event(const ledc_cb_param_t *param, void 
     return (taskAwoken == pdTRUE);
 }
 
+static void rgb_led_fade_task(void * pvParameters) 
+{
+    while (1)
+    {
+         // fade down to 0
+        for (int ch = 0; ch < LEDC_CH_NUM; ch++)
+        {
+            ledc_set_fade_with_time(ledc_channel[ch].speed_mode, ledc_channel[ch].channel, 0, LEDC_TEST_FADE_TIME);
+            ledc_fade_start(ledc_channel[ch].speed_mode, ledc_channel[ch].channel, LEDC_FADE_NO_WAIT);
+        }
+
+        // for (int i = 0; i < LEDC_CH_NUM; i++) {
+        //     xSemaphoreTake(counting_sem, portMAX_DELAY);
+        // }
+
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+        // fade up to current color
+        for (int ch = 0; ch < LEDC_CH_NUM; ch++) {
+            ledc_set_fade_with_time(ledc_channel[ch].speed_mode, ledc_channel[ch].channel, current_color[ch], LEDC_TEST_FADE_TIME);
+            ledc_fade_start(ledc_channel[ch].speed_mode, ledc_channel[ch].channel, LEDC_FADE_NO_WAIT);
+        }
+
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+        // for (int i = 0; i < LEDC_CH_NUM; i++) {
+        //     xSemaphoreTake(counting_sem, portMAX_DELAY);
+        // }
+    }
+}
+
 /**
  * Initialize the RGB LED settings per channel, include
  * the GPI for each color, mode and timer configuration. 
  */
 static void rgb_led_pwm_init(void)
 {
+
     // Initialize fade service
     ledc_fade_func_install(0);
     ledc_cbs_t callbacks = {
         .fade_cb = cb_ledc_fade_end_event
     };
-    counting_sem = xSemaphoreCreateCounting(LEDC_TEST_CH_NUM, 0);
+    counting_sem = xSemaphoreCreateCounting(LEDC_CH_NUM, 0);
 
     // Configure the timer
     ledc_timer_config_t ledc_timer = 
@@ -118,63 +155,75 @@ static void rgb_led_pwm_init(void)
        
 
     // Set LED Controller with previously prepaired configuration
-    for(int ch = 0; ch < RGB_LED_CHANNEL_NUM; ch++)
+    for(int ch = 0; ch < LEDC_CH_NUM; ch++)
     {
         ledc_channel_config(&ledc_channel[ch]);
         ledc_cb_register(ledc_channel[ch].speed_mode, ledc_channel[ch].channel, &callbacks, (void *) counting_sem);
     }
 
+    // Create the fade task and pause it
+    // xTaskCreatePinnedToCore(rgb_led_fade_task, "rgb_led_fade_task", RGB_LED_FADE_TASK_STACK_SIZE, NULL, RGB_LED_FADE_TASK_PRIORITY, &fade_handle, RGB_LED_FADE_TASK_CORE_ID);
+    // xTaskCreate(rgb_led_fade_task, "rgb_led_fade_task", RGB_LED_FADE_TASK_STACK_SIZE ,NULL, RGB_LED_FADE_TASK_PRIORITY, &fade_handle);
+    // vTaskSuspend(fade_handle);
+
     g_pwm_init_handle = true;
 }
 
+/**
+ * Sets the color of the RGB led.  If the fade task is running the led color values will be updated after during
+ * the fade cycle.
+ **/
 void rgb_led_set_color (const rgb_color_def_t *color)
 {
-    if (g_pwm_init_handle == false) 
+    if (!g_pwm_init_handle) 
     {
         rgb_led_pwm_init();
     }
 
-    // Value shoud be 0 - 255 for 8 bit number
-    ledc_set_duty(ledc_channel[0].speed_mode, ledc_channel[0].channel, color->red);
-    ledc_update_duty(ledc_channel[0].speed_mode, ledc_channel[0].channel);
+    current_color[0] = color->red;
+    current_color[1] = color->green;
+    current_color[2] = color->blue;
 
-    ledc_set_duty(ledc_channel[1].speed_mode, ledc_channel[1].channel, color->green);
-    ledc_update_duty(ledc_channel[1].speed_mode, ledc_channel[1].channel);
-
-    ledc_set_duty(ledc_channel[2].speed_mode, ledc_channel[2].channel, color->blue);
-    ledc_update_duty(ledc_channel[2].speed_mode, ledc_channel[2].channel);
+    // Only set the color if the fade task is suspended.
+    // The new color will be picked up when the led fades from 0 to current color
+    // if (eSuspended == eTaskGetState(fade_handle)) {
+        for (int ch = 0; ch < LEDC_CH_NUM; ch++) 
+        {
+            ledc_set_duty(ledc_channel[ch].speed_mode, ledc_channel[ch].channel, current_color[ch]);
+            ledc_update_duty(ledc_channel[ch].speed_mode, ledc_channel[ch].channel);
+        }
+    // }
 }
 
-void rgb_led_set_blink(const bool enableBlink) {
-    if (g_pwm_init_handle == false) 
+void rgb_led_start_blink(const bool startBlink) {
+    if (!g_pwm_init_handle) 
     {
         rgb_led_pwm_init();
     }
 
-    if (enableBlink == true)
+    if (startBlink)
     {
-        // TODO:  This will only fire once need to put into a running task
-        // fade down to 0
-        for (int ch = 0; ch < LEDC_TEST_CH_NUM; ch++)
+        ESP_LOGI(TAG, "Fade Handle Task State = %d", eTaskGetState(fade_handle));
+        if (eSuspended == eTaskGetState(fade_handle)) 
         {
-            ledc_set_fade_with_time(ledc_channel[ch].speed_mode, ledc_channel[ch].channel, 0, LEDC_TEST_FADE_TIME);
-            ledc_fade_start(ledc_channel[ch].speed_mode, ledc_channel[ch].channel, LEDC_FADE_NO_WAIT);
+            ESP_LOGI(TAG, "Starting Fade Task");
+            vTaskResume(fade_handle);
         }
-
-        for (int i = 0; i < LEDC_TEST_CH_NUM; i++) {
-            xSemaphoreTake(counting_sem, portMAX_DELAY);
-        }
-
-        // fade up to max
-        for (int ch = 0; ch < LEDC_TEST_CH_NUM; ch++) {
-            ledc_set_fade_with_time(ledc_channel[ch].speed_mode, ledc_channel[ch].channel, LEDC_TEST_DUTY, LEDC_TEST_FADE_TIME);
-            ledc_fade_start(ledc_channel[ch].speed_mode, ledc_channel[ch].channel, LEDC_FADE_NO_WAIT);
+        else
+        {
+            ESP_LOGI(TAG, "Fade task is already running");
         }
     }
-    else {
-        for (int ch = 0; ch < LEDC_TEST_CH_NUM; ch++) {
-            ledc_set_duty(ledc_channel[ch].speed_mode, ledc_channel[ch].channel, LEDC_TEST_DUTY);
-            ledc_update_duty(ledc_channel[ch].speed_mode, ledc_channel[ch].channel);
+    else 
+    {
+        if (eRunning == eTaskGetState(fade_handle))
+        {
+            ESP_LOGI(TAG, "Pausing Fade Task");
+            vTaskSuspend(fade_handle);
+        }
+        else
+        {
+            ESP_LOGI(TAG, "Fade task is already suspended");
         }
     }
     

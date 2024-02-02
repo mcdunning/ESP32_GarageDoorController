@@ -7,16 +7,37 @@
 #include "sdkconfig.h"
 #include "rgb_led.h"
 
-rgb_color_def_t color_cyan = {0,201,204};
-rgb_color_def_t color_salmon = {247,120,138};
-rgb_color_def_t color_melon = {52,168,83};
+#define RGB_LED_FUNCTION_TEST_TASK_STACK_SIZE 4800
+#define RGB_LED_FUNCTION_TEST_TASK_PRIORITY   6
+#define RGB_LED_FUNCTION_TEST_TASK_CORE_ID    0
+
+static const char* TAG = "main";
+
+static rgb_color_def_t color_cyan = {0,201,204};
+static rgb_color_def_t color_salmon = {247,120,138};
+static rgb_color_def_t color_melon = {52,168,83};
+
+static void rgb_led_function_test_task(void * pvParmeters)
+{
+    for(int i = 0; i < 10; i++)
+    {
+        ESP_LOGI(TAG, "Setting Color to Salmon");
+        rgb_led_set_color(&color_salmon);
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+        ESP_LOGI(TAG, "Setting Color to Cyan");
+        rgb_led_set_color(&color_cyan);
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
+    
+        ESP_LOGI(TAG, "Setting color to Melon");
+        rgb_led_set_color(&color_melon);
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
+    }
+}
 
 void app_main(void) {
     printf("Hello world!\n\n");
     
-    rgb_led_set_color(&color_cyan);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-
     /* Print chip information */
     esp_chip_info_t chip_info;
     uint32_t flash_size;
@@ -45,24 +66,16 @@ void app_main(void) {
 
     printf("Minimum free heap size: %" PRIu32 " bytes\n", esp_get_minimum_free_heap_size());
     
-    printf("Setting Color to Salmon\n");
-    rgb_led_set_color(&color_salmon);
-    printf("Starting Blink\n");
-    rgb_led_set_blink(true);
+    ESP_LOGI(TAG, "Starting RGB_LED function testing");
+    xTaskCreatePinnedToCore(rgb_led_function_test_task, 
+                            "rgb_led_function_test_task", 
+                            RGB_LED_FUNCTION_TEST_TASK_STACK_SIZE, 
+                            NULL, 
+                            RGB_LED_FUNCTION_TEST_TASK_PRIORITY, 
+                            NULL, 
+                            RGB_LED_FUNCTION_TEST_TASK_CORE_ID);
     
-    for (int i = 10; i >= 0; i--) {
-        printf("Restarting in %d seconds...\n", i);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-    
-    printf("Stopping Blink\n");
-    rgb_led_set_blink(false);
-    printf("Setting color to Melon\n");
-    rgb_led_set_color(&color_melon);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-    printf("Restarting now.\n");
-    fflush(stdout);
-    esp_restart();
-
+    // ESP_LOGI(TAG, "Restarting now");
+    // fflush(stdout);
+    // esp_restart();
 }

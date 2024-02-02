@@ -33,12 +33,12 @@
 #define LEDC_LS_CH2_CHANNEL LEDC_CHANNEL_2
 #endif
 
-#define LEDC_TEST_CH_NUM       (3)
-#define LEDC_TEST_DUTY         (4000)
-#define LEDC_TEST_FADE_TIME    (3000)
+#define LEDC_CH_NUM         (3)
+#define LEDC_TEST_FADE_TIME (3000)
 
-// RGB LED color mix channels
-#define RGB_LED_CHANNEL_NUM     3
+#define RGB_LED_FADE_TASK_STACK_SIZE 4096
+#define RGB_LED_FADE_TASK_PRIORITY   5
+#define RGB_LED_FADE_TASK_CORE_ID    1
 
 // RGB LED configuration
 typedef struct
@@ -61,6 +61,6 @@ typedef struct
  * Sets the rgb led color based on the passed in data
  */
 void rgb_led_set_color(const rgb_color_def_t *color);
-void rgb_led_set_blink(const bool start_blink);
+void rgb_led_start_blink(const bool start_blink);
 
 #endif // MAIN_RGB_LED_H_
