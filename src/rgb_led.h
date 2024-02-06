@@ -34,11 +34,10 @@
 #endif
 
 #define LEDC_CH_NUM         (3)
-#define LEDC_TEST_FADE_TIME (3000)
 
-#define RGB_LED_FADE_TASK_STACK_SIZE 4096
-#define RGB_LED_FADE_TASK_PRIORITY   5
-#define RGB_LED_FADE_TASK_CORE_ID    1
+#define RGB_LED_FADE_TASK_STACK_SIZE (9000)
+#define RGB_LED_FADE_TASK_PRIORITY   (5)
+#define RGB_LED_FADE_TASK_CORE_ID    (1)
 
 // RGB LED configuration
 typedef struct
@@ -49,18 +48,18 @@ typedef struct
     int timer_index;
 } ledc_info_t;
 
-typedef struct 
+typedef enum
 {
-    int red;
-    int green;
-    int blue;
-} rgb_color_def_t;
+    eConstant = 0,
+    eSlowBlink,
+    eFastBlink
+} eBlinkState;
 
 
 /**
  * Sets the rgb led color based on the passed in data
  */
-void rgb_led_set_color(const rgb_color_def_t *color);
-void rgb_led_start_blink(const bool start_blink);
+void rgb_led_set_color(const int color[]);
+void rgb_led_handle_blink(const eBlinkState blinkState);
 
 #endif // MAIN_RGB_LED_H_

@@ -13,31 +13,43 @@
 
 static const char* TAG = "main";
 
-static rgb_color_def_t color_cyan = {0,201,204};
-static rgb_color_def_t color_salmon = {247,120,138};
-static rgb_color_def_t color_melon = {52,168,83};
+static const int color_cyan[3] = {0, 201, 204};
+static const int color_salmon[3] = {247, 120, 138};
+static const int color_melon[3] = {52, 168, 83};
 
+// The testing task to drive program development
 static void rgb_led_function_test_task(void * pvParmeters)
 {
-    for(int i = 0; i < 10; i++)
+    for(;;)
     {
         ESP_LOGI(TAG, "Setting Color to Salmon");
-        rgb_led_set_color(&color_salmon);
+        rgb_led_set_color(color_salmon);
         vTaskDelay(10000 / portTICK_PERIOD_MS);
 
         ESP_LOGI(TAG, "Setting Color to Cyan");
-        rgb_led_set_color(&color_cyan);
+        rgb_led_set_color(color_cyan);
         vTaskDelay(10000 / portTICK_PERIOD_MS);
     
         ESP_LOGI(TAG, "Setting color to Melon");
-        rgb_led_set_color(&color_melon);
+        rgb_led_set_color(color_melon);
         vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+        ESP_LOGI(TAG, "Starting Slow Blink");
+        rgb_led_handle_blink(eSlowBlink);
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
+        
+        ESP_LOGI(TAG, "Starting Fast Blink");
+        rgb_led_handle_blink(eFastBlink);
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+        ESP_LOGI(TAG, "Stoppint Blink");
+        rgb_led_handle_blink(eConstant);
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
+
     }
 }
 
 void app_main(void) {
-    printf("Hello world!\n\n");
-    
     /* Print chip information */
     esp_chip_info_t chip_info;
     uint32_t flash_size;
@@ -75,7 +87,4 @@ void app_main(void) {
                             NULL, 
                             RGB_LED_FUNCTION_TEST_TASK_CORE_ID);
     
-    // ESP_LOGI(TAG, "Restarting now");
-    // fflush(stdout);
-    // esp_restart();
 }
